@@ -1,0 +1,21 @@
+{
+  "name": "sfactory",
+  "private": true,
+  "type": "module",
+  "description": "Workflow Memory for Pi: experience compiled into executable programs",
+  "scripts": {
+    "pi": "pi -e ./extensions/sfactory/index.ts -e ./demo/tickets.ts --skill ./skills --tools +codemode",
+    "pi:base": "pi -e ./demo/tickets.ts",
+    "pi:codemode": "pi -e ./demo/tickets.ts --tools +codemode",
+    "pi:wf": "SFACTORY_DECIDE=llm pi -e ./extensions/sfactory/index.ts -e ./demo/tickets.ts --skill ./skills --tools +codemode",
+    "demo:reset": "node --experimental-strip-types --no-warnings demo/seed.ts",
+    "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^1.6.1",
+    "@types/node": "^22.20.7",
+    "typebox": "^1.3.27",
+    "typescript": "^5.9.3"
+  }
+}
