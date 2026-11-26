@@ -2,136 +2,82 @@
 
 # SFactory
 
-Pi Coding Agent 向けの Workflow Memory 拡張です。エージェントが解いたタスクを、次回以降は再構築せずに実行できる JavaScript プログラムとして蓄積します。
+SFactory は、Pi Coding Agent が解いたタスクの手順を JavaScript の Workflow として保存する拡張です。たとえば問い合わせの担当チームと優先度を付ける手順を保存すると、Pi は次の問い合わせを保存済みの `wf_<name>` ツールで処理できます。
 
-- **Workflow はツール**: 保存した Workflow は `wf_<name>` という Pi のツールになり、codemode と同じ QuickJS サンドボックスで動きます。適用するかどうかはモデルの通常のツール選択です。
-- **リプレイゲート**: 記録済みの実行を副作用なしで再生し、同じ副作用を再現できたコードだけを保存します。
-- **判断カスケード**: `decide()` は最初 LLM が答え、Decision Model が裏で同じ質問に答えます。一致が十分たまった判断点から Decision Model に切り替わります。
-- **エスカレーション**: 想定外の入力では止まり、適用済みの副作用の一覧を付けてメインの LLM に戻します。
+![宣言的記憶では記録した解き方を読み直し、手続き記憶では保存した Workflow を実行する](assets/memory-models.svg)
 
-## Agent、Skills、Code Mode、SFactory の違い
+[チケットのデモを試す](#チケットのデモを試す) · [Workflow の書き方](skills/workflow-compile/SKILL.md)
 
-![通常の Agent、Skills、Code Mode、SFactory のタスク実行フロー](assets/execution-models.svg)
+## 解いたタスクを Workflow にする
 
-| 実行方式 | 次のタスクに引き継ぐもの |
-|---|---|
-| 通常の Agent | この例ではタスク固有の手順は残らず、LLM がツールの結果を見ながら手順を組み立てます。 |
-| Skills | 手順書を再利用します。LLM が手順書を読み、ツールを呼び出します。 |
-| Code Mode | この例ではコードをそのタスクで使います。複数のツール呼び出しをまとめて実行できます。 |
-| SFactory | 保存した Workflow をツールとして再実行します。判断点ごとの較正データも引き継ぎます。 |
+1. **記録する。** Pi が通常のツールでタスクを解きます。SFactory はツールの呼び出しと結果を記録します。
+2. **検証して保存する。** Pi が `workflow_trace` で記録を読み、入力と手順を分けてコードを書きます。`workflow_save` は記録の応答を使ってコードを実行し、必要な更新操作を再現できた場合に保存します。リプレイ中は実際のツールを呼び出しません。
+3. **次のタスクで実行する。** Pi が `wf_<name>` を選び、Workflow がツールの呼び出しや条件分岐を処理します。判断が必要な箇所は `decide()` でモデルに問い合わせます。扱えない入力では、実行済みの更新を伝えて残りを Pi に引き継ぎます。
 
-宣言的記憶（Declarative Memory）は、過去の解決方法を知識として残します。SFactory の Workflow は手続き記憶（Procedural Memory）です。リプレイを通過した解決手順を実行可能なコードとして保存します。次のタスクで適用できる場合、LLM は保存済みの Workflow を呼び出します。
+![通常の Agent、Skills、Code Mode、SFactory の実行フロー](assets/execution-models.svg)
 
-### 繰り返すと大型 LLM の利用はどう変わるか
+Skills は手順書を次のタスクに持ち越します。Code Mode は、そのタスクで使う複数のツール操作をコードにまとめられます。SFactory は、記録で検証したコードを次のタスクでも使えるツールとして保存します。成功した Workflow の実行例も、次にコードを更新するときのリプレイに使います。
 
-![大型 LLM の利用量は、Workflow の作成で一時的に増え、再利用と判断の委譲で減るという概念図](assets/workflow-adoption.svg)
+## 判断点ごとにモデルを切り替える
 
-この曲線は想定を示す概念図です。Workflow を作る Compile では初期コストがかかります。Shadow では同じ判断を両モデルに問い、回答の一致を記録します。Mature では基準を満たした判断点のうち、信頼度が十分な回答を Decision Model に任せます。基準を満たさない回答や定期監査では LLM を使います。
+チケットの取得や更新はコードで処理し、本文から担当チームを選ぶような判断を `decide()` に渡します。最初は LLM の回答を使い、Decision Model の回答と照合します。回答の一致率などが基準を満たした判断点では、信頼度が十分な回答を Decision Model に任せます。信頼度が低い場合や定期監査では LLM が判断します。
 
-## 試す
+![Workflow の作成、再利用、判断の委譲に伴う大型 LLM の利用量の概念図](assets/workflow-adoption.svg)
 
-Node 22 以上が必要です。
+同種のタスクを繰り返した場合の概念図です。Compile で Workflow を作るコストがかかり、再利用できる手順が増えると、タスクごとに手順を組み立てる負担が減ります。Shadow で判断点ごとの較正データを蓄積し、条件を満たした判断点は Mature で委譲できます。
+
+## チケットのデモを試す
+
+Node.js 22.19.0 以上で、リポジトリのルートから実行します。
 
 ```sh
-npm install
-npm test          # キー不要。疑似モデルで cold → 保存 → warm → escalate まで通します
-```
-
-実モデルで試すには、Pi にプロバイダの認証を入れます(`npm run pi` を起動して `/login`、または `ANTHROPIC_API_KEY` などの環境変数)。Decision Model を使う場合は `TYPESAFE_API_KEY` や `OPENROUTER_API_KEY` など、`models.classify` が使えるプロバイダの認証も必要です。なくても動き、その場合 `decide()` は常に LLM が答えます。
-
-デモ用に小さなサポート窓口(`tickets_*` ツール)が付いています。
-
-```sh
-npm run demo:reset -- 1     # バッチ1のチケットを用意
+npm ci
+npm run demo:reset -- 1
 npm run pi
 ```
 
-Pi の中で次の順に試します。
+Pi で `/login` を実行し、利用するモデルのプロバイダを設定します。Decision Model の利用には別途、対応する分類モデルへのアクセスが必要です。LLM のみで試す場合は `npm run pi:wf` で起動します。
 
-1. `未処理のサポートチケットをトリアージして。チームのラベルと優先度を付けて` (1回目。普通に解きます)
-2. `/tickets reset 2` のあと、同じ依頼をもう一度。似た実行があったという通知が出ます
-3. `いまのトリアージを再利用できるようにして` (モデルが `workflow_trace` で記録を読み、`workflow_save` で保存します)
-4. `/tickets reset 4` のあと、同じ依頼。今度は `wf_*` を1回呼ぶだけで終わります
-5. `/tickets reset 3` のあと、同じ依頼。どのカテゴリにも当てはまらないチケットで止まり、残りをモデルが引き継ぎます
-6. `/wf` で状態、実行回数、Decision Model に移った判断点の数を確認できます
+1. 「未処理のサポートチケットをトリアージして。担当チームと優先度を付けて」と依頼します。
+2. `/tickets reset 2` でチケットを入れ替え、同じ依頼をします。
+3. 「いまのトリアージを再利用できるようにして」と依頼します。リプレイに通ると、`workflow_save` の結果に登録された `wf_<name>` が表示されます。
+4. `/tickets reset 4` を実行し、保存済みの Workflow でトリアージを依頼します。`/wf` で Workflow の状態と実行回数を確認できます。
+5. `/tickets reset 3` で通常の分類に当てはまらないチケットが混ざるバッチを用意します。Workflow が扱えないチケットで停止した場合は、Pi が残りを引き継ぎます。
 
-## 4構成の比較
+API キーを使わずに一連の動作を確認するには、`npm test` を実行します。疑似モデルで初回実行、保存、再利用、エスカレーションを確認できます。
 
-| コマンド | 構成 |
+## 設定と保存先
+
+| コマンド | 起動する構成 |
 |---|---|
-| `npm run pi:base` | Pi 標準 |
-| `npm run pi:codemode` | Pi + Code Mode |
-| `npm run pi:wf` | + Workflow Memory (`decide()` は常に LLM) |
-| `npm run pi` | + Decision Model |
+| `npm run pi:base` | Pi とデモ用のチケットツール |
+| `npm run pi:codemode` | Pi と Code Mode |
+| `npm run pi:wf` | Code Mode と Workflow Memory。判断には LLM を使います。 |
+| `npm run pi` | Code Mode と Workflow Memory。利用可能な Decision Model があれば較正します。 |
 
-実行ごとのターン数とトークン数は `.pi/traces/*.json` に残ります。4構成を自動で回して集計するランナーはまだありません。
+<details>
+<summary>環境変数と Workflow の状態</summary>
 
-## Workflow の書き方
+| 環境変数 | 設定 |
+|---|---|
+| `SFACTORY_DECIDE` | `auto` が既定です。`llm` で LLM のみを使用します。 |
+| `SFACTORY_CLASSIFIER` | Decision Model を `provider/id` で指定します。既定は利用可能な最初の分類モデルです。 |
+| `SFACTORY_ASK_MODEL` | `decide()` と `ask()` が使うチャットモデルです。既定はセッションのモデルです。 |
+| `SFACTORY_MIN_SAMPLES` | 判断の委譲を検討するために必要な比較数です。既定は 20 です。 |
+| `SFACTORY_TERMINATE` | `1` で `trusted` な Workflow の成功後に要約ターンを省きます。 |
 
-モデル向けの手順は [skills/workflow-compile/SKILL.md](skills/workflow-compile/SKILL.md) にあります。コードは async 関数の本体です。
+新規保存時は `candidate`、初回成功で `probation`、成功が3回に達すると `trusted` になります。実行に失敗すると成功のカウントをリセットし、状態を1段戻します。エスカレーションの回数は別に記録します。
 
-```js
-const { tickets } = await tools.tickets_list({ status: input.status });
-for (const t of tickets) {
-  const full = await tools.tickets_get({ id: t.id });
-  const category = await decide({
-    id: "category",
-    state: { subject: full.subject, body: full.body },
-    type: "choice",
-    instructions: "Which team should handle this support ticket?",
-    criteria: { billing: "Charges, refunds, invoices", bug: "Something is broken" },
-  });
-  await tools.tickets_update({ id: t.id, label: category.answer, status: "triaged" });
-}
+Workflow は QuickJS で実行します。保存時とコードのハッシュやツールのスキーマが異なる場合は実行を拒否します。既定の上限はツール呼び出し200回、`decide()` と `ask()` の合計200回、実行時間5分です。
+
+```text
+.pi/traces/                     Pi の実行記録。直近50件
+.pi/workflows/<name>/
+  workflow.js                   保存済みのコード
+  meta.json                     実行状態、統計、判断点ごとの較正データ
+  fixtures/                     リプレイに使う実行記録
+  versions/                     過去のコード
+  runs/                         失敗時とエスカレーション時の記録
 ```
 
-| グローバル | 役割 |
-|---|---|
-| `input` | 入力(JSON Schema で検証済み) |
-| `tools.<name>(args)` | 記録済みの実行で使われたツールだけが使えます |
-| `decide({ id, state, type, instructions, criteria })` | 有限の選択肢からの判断。`choice` / `bool` / `score` |
-| `ask(prompt, state, schema)` | 短い型付き生成 |
-| `escalate(reason, state)` | 中止してメインの LLM に戻す。スクリプトからは捕捉できません |
-
-## 保存されるもの
-
-```
-.pi/workflows/<name>/workflow.js      プログラム
-.pi/workflows/<name>/meta.json        状態・統計・判断点の較正(ランタイムが管理)
-.pi/workflows/<name>/fixtures/        新しい版が必ず再現すべき記録
-.pi/workflows/<name>/versions/        過去の版
-.pi/workflows/<name>/runs/            失敗・エスカレーションした実行の記録
-.pi/traces/                           エージェント実行の記録(直近50件)
-```
-
-状態は `candidate` → `probation`(初回成功) → `trusted`(3回連続成功)と進み、失敗で1段戻ります。
-
-## ランタイムが保証すること
-
-- 保存は `workflow_save` 経由のみ。`write` / `edit` と、書き換えに見える `bash` は `.pi/workflows` に対してブロックされます(`bash` は文字列の一致による検出で、完全ではありません)
-- `workflow.js` が保存時のハッシュと一致しなければ実行しません
-- 使うツールのスキーマが保存時から変わっていれば、古いものとして実行しません
-- Workflow の中から別の Workflow、`workflow_save`、`codemode` は呼べません
-- ツール呼び出し200回、判断200回、5分の上限があります
-
-## 環境変数
-
-| 変数 | 意味 |
-|---|---|
-| `SFACTORY_DECIDE` | `auto`(既定)または `llm` |
-| `SFACTORY_CLASSIFIER` | Decision Model を `provider/id` で指定。既定は利用可能な最初のもの |
-| `SFACTORY_ASK_MODEL` | `decide()` / `ask()` に使うチャットモデル。既定はセッションのモデル |
-| `SFACTORY_MIN_SAMPLES` | 判断点を Decision Model に移すまでに必要な比較数。既定 20 |
-| `SFACTORY_TERMINATE` | `1` で、trusted な Workflow の成功後に要約のターンを省きます |
-
-## 構成
-
-| パス | 内容 |
-|---|---|
-| `extensions/sfactory/index.ts` | Pi との接続: 記録、ツール、ガード |
-| `extensions/sfactory/src/engine.ts` | サンドボックスでの実行、上限、エスカレーション |
-| `extensions/sfactory/src/replay.ts` | リプレイゲート |
-| `extensions/sfactory/src/decide.ts` | 判断カスケードと較正 |
-| `extensions/sfactory/src/store.ts` | ディスク上の Workflow と記録 |
-| `demo/` | デモ用のチケットツール |
-| `test/` | 単体テストと、疑似モデルによる E2E |
+</details>

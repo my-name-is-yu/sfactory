@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="224" viewBox="0 0 800 224" role="img" aria-labelledby="title description">
+  <title id="title">タスクの解き方をどう保存するか</title>
+  <desc id="description">宣言的記憶は解き方を文章で保存し、次のタスクで LLM が読みます。SFactory の手続き記憶は検証した Workflow をコードで保存し、次のタスクで実行します。</desc>
+  <rect x="1" y="1" width="389" height="222" rx="14" fill="#fff" stroke="#d8dfe8"/>
+  <rect x="410" y="1" width="389" height="222" rx="14" fill="#faf7ff" stroke="#b998ee"/>
+  <path d="M25 132h340m70 0h340" stroke="#dedfe8"/>
+  <g font-family="system-ui, sans-serif" fill="#182034">
+    <g font-size="22" font-weight="700">
+      <text x="25" y="44">宣言的記憶</text>
+      <text x="435" y="44">SFactory の手続き記憶</text>
+    </g>
+    <g font-size="15" fill="#536278">
+      <text x="25" y="72">Declarative memory</text>
+      <text x="435" y="72" fill="#6435b2">Procedural memory</text>
+    </g>
+    <g font-size="19" font-weight="600">
+      <text x="25" y="109">解き方を文章で残す</text>
+      <text x="435" y="109">検証した Workflow を残す</text>
+    </g>
+    <g font-size="16" fill="#536278">
+      <text x="25" y="165">次のタスク</text>
+      <text x="435" y="165" fill="#6435b2">次のタスク</text>
+    </g>
+    <g font-size="19">
+      <text x="25" y="195">LLM が読み、手順を組み立てる</text>
+      <text x="435" y="195">保存した Workflow を実行する</text>
+    </g>
+  </g>
+</svg>
