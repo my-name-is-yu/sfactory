@@ -9,6 +9,25 @@ Pi Coding Agent 向けの Workflow Memory 拡張です。エージェントが�
 - **判断カスケード**: `decide()` は最初 LLM が答え、Decision Model が裏で同じ質問に答えます。一致が十分たまった判断点から Decision Model に切り替わります。
 - **エスカレーション**: 想定外の入力では止まり、適用済みの副作用の一覧を付けてメインの LLM に戻します。
 
+## Agent、Skills、Code Mode、SFactory の違い
+
+![通常の Agent、Skills、Code Mode、SFactory のタスク実行フロー](assets/execution-models.svg)
+
+| 実行方式 | 次のタスクに引き継ぐもの |
+|---|---|
+| 通常の Agent | この例ではタスク固有の手順は残らず、LLM がツールの結果を見ながら手順を組み立てます。 |
+| Skills | 手順書を再利用します。LLM が手順書を読み、ツールを呼び出します。 |
+| Code Mode | この例ではコードをそのタスクで使います。複数のツール呼び出しをまとめて実行できます。 |
+| SFactory | 保存した Workflow をツールとして再実行します。判断点ごとの較正データも引き継ぎます。 |
+
+宣言的記憶（Declarative Memory）は、過去の解決方法を知識として残します。SFactory の Workflow は手続き記憶（Procedural Memory）です。リプレイを通過した解決手順を実行可能なコードとして保存します。次のタスクで適用できる場合、LLM は保存済みの Workflow を呼び出します。
+
+### 繰り返すと大型 LLM の利用はどう変わるか
+
+![大型 LLM の利用量は、Workflow の作成で一時的に増え、再利用と判断の委譲で減るという概念図](assets/workflow-adoption.svg)
+
+この曲線は想定を示す概念図です。Workflow を作る Compile では初期コストがかかります。Shadow では同じ判断を両モデルに問い、回答の一致を記録します。Mature では基準を満たした判断点のうち、信頼度が十分な回答を Decision Model に任せます。基準を満たさない回答や定期監査では LLM を使います。
+
 ## 試す
 
 Node 22 以上が必要です。
