@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="392" viewBox="0 0 800 392" role="img" aria-labelledby="title desc">
+  <title id="title">大型 LLM の利用量の変化（概念図）</title>
+  <desc id="desc">Code Mode の利用量を一定と仮定した比較。SFactory は Compile で一時的に利用量が増え、Workflow の再利用で減る。Shadow で較正し、Mature で判断を委譲するとさらに減る場合がある。</desc>
+  <rect x="1" y="1" width="798" height="390" rx="14" fill="#fff" stroke="#d8dfe8"/>
+  <path d="M204 58h150v210H204z" fill="#f4effc"/>
+  <path d="M354 58h204v210H354z" fill="#fdf3e8"/>
+  <path d="M82 91h654M82 143h654M82 195h654M82 247h654" fill="none" stroke="#d8dfe8" stroke-dasharray="5 5"/>
+  <path d="M82 58v210h654" fill="none" stroke="#8492a8" stroke-width="1.5"/>
+  <path d="M82 143h654" fill="none" stroke="#65748b" stroke-width="3" stroke-dasharray="8 6"/>
+  <path d="M82 143h72l50-63 150 105 144 13 60 33 81 5h97" fill="none" stroke="#087f73" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="204" cy="80" r="6" fill="#7241c7"/>
+  <circle cx="558" cy="231" r="6" fill="#ac590b"/>
+  <g font-family="system-ui, sans-serif" font-size="16" fill="#182034" dominant-baseline="central">
+    <text x="24" y="28" font-size="18" font-weight="700">大型 LLM の利用量の変化</text>
+    <text x="774" y="28" text-anchor="end" fill="#536278" font-size="14">概念図</text>
+    <text x="38" y="163" transform="rotate(-90 38 163)" text-anchor="middle">1タスクあたりの利用量</text>
+    <text x="218" y="68" fill="#6435b2">Workflow を作成</text>
+    <text x="570" y="214" fill="#884506">判断を委譲</text>
+    <g text-anchor="middle">
+      <text x="143" y="287">Cold</text><text x="279" y="287">Compile</text>
+      <text x="456" y="287">Shadow</text><text x="647" y="287">Mature</text>
+      <text x="409" y="316">同種タスクの実行回数</text>
+    </g>
+    <path d="M82 357h34" stroke="#65748b" stroke-width="3" stroke-dasharray="8 6"/>
+    <text x="125" y="357">Code Mode</text>
+    <path d="M251 357h34" stroke="#087f73" stroke-width="4"/>
+    <text x="294" y="357">SFactory</text>
+  </g>
+</svg>
