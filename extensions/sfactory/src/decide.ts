@@ -32,8 +32,29 @@ export const DEFAULT_CASCADE: CascadeConfig = {
 	window: 100,
 };
 
+/** What happened at one decide() call, for measurement. */
+export interface DecideEvent {
+	site: string;
+	/**
+	 * llm_only: no decision model in play. shadow: the LLM answered, the decision model was compared.
+	 * s1: the decision model answered alone. s1_audit: it answered and the LLM checked it.
+	 * s1_fallback: its confidence was below the threshold, so the LLM answered.
+	 */
+	path: "llm_only" | "shadow" | "s1" | "s1_audit" | "s1_fallback";
+	by: "s1" | "s2";
+	/** Decision model confidence, when it answered. */
+	confidence?: number;
+	/** Whether the two tiers agreed, when both answered. */
+	agreed?: boolean;
+	tierBefore: "s1" | "s2";
+	tierAfter: "s1" | "s2";
+	tau: number;
+	samples: number;
+}
+
 export interface CascadeDeps {
 	config: CascadeConfig;
+	onEvent?: (event: DecideEvent) => void;
 	sites: Record<string, SiteState>;
 	/** Decision model. Resolves to undefined when none is available or the call failed. */
 	classify?: (question: DecideQuestion, signal: AbortSignal) => Promise<{ answer: DecideValue; confidence: number } | undefined>;
@@ -54,9 +75,16 @@ export async function decideCascade(question: DecideQuestion, deps: CascadeDeps,
 		return answer;
 	};
 
-	if (config.mode === "llm" || !deps.classify) return { answer: await askLlm(), by: "s2", confidence: 1 };
+	if (config.mode === "llm" || !deps.classify) {
+		const answer = await askLlm();
+		deps.onEvent?.({ site: question.id, path: "llm_only", by: "s2", tierBefore: "s2", tierAfter: "s2", tau: 1, samples: 0 });
+		return { answer, by: "s2", confidence: 1 };
+	}
 
 	const site = (deps.sites[question.id] ??= { tier: "s2", tau: 1, samples: [], served: 0 });
+	const tierBefore = site.tier;
+	const emit = (path: DecideEvent["path"], by: "s1" | "s2", confidence?: number, agreed?: boolean) =>
+		deps.onEvent?.({ site: question.id, path, by, confidence, agreed, tierBefore, tierAfter: site.tier, tau: site.tau, samples: site.samples.length });
 	const record = (confidence: number, agreed: boolean) => {
 		site.samples.push([round(confidence), agreed ? 1 : 0]);
 		if (site.samples.length > config.window) site.samples.splice(0, site.samples.length - config.window);
@@ -73,20 +101,25 @@ export async function decideCascade(question: DecideQuestion, deps: CascadeDeps,
 		const fast = await classify();
 		if (fast && fast.confidence >= site.tau) {
 			site.served++;
-			if (site.served % config.auditEvery !== 0) return { answer: fast.answer, by: "s1", confidence: fast.confidence };
+			if (site.served % config.auditEvery !== 0) {
+				emit("s1", "s1", fast.confidence);
+				return { answer: fast.answer, by: "s1", confidence: fast.confidence };
+			}
 			const slow = await askLlm();
-			record(fast.confidence, same(fast.answer, slow));
-			return same(fast.answer, slow)
-				? { answer: fast.answer, by: "s1", confidence: fast.confidence }
-				: { answer: slow, by: "s2", confidence: 1 };
+			const agreed = same(fast.answer, slow);
+			record(fast.confidence, agreed);
+			emit("s1_audit", agreed ? "s1" : "s2", fast.confidence, agreed);
+			return agreed ? { answer: fast.answer, by: "s1", confidence: fast.confidence } : { answer: slow, by: "s2", confidence: 1 };
 		}
 		const slow = await askLlm();
 		if (fast) record(fast.confidence, same(fast.answer, slow));
+		emit("s1_fallback", "s2", fast?.confidence, fast ? same(fast.answer, slow) : undefined);
 		return { answer: slow, by: "s2", confidence: 1 };
 	}
 
 	const [slow, fast] = await Promise.all([askLlm(), classify()]);
 	if (fast) record(fast.confidence, same(fast.answer, slow));
+	emit(fast ? "shadow" : "llm_only", "s2", fast?.confidence, fast ? same(fast.answer, slow) : undefined);
 	return { answer: slow, by: "s2", confidence: 1 };
 }
 

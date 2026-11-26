@@ -77,7 +77,31 @@ function textOf(content: readonly { type: string; text?: string }[] | undefined)
 		.join("\n");
 }
 
+export interface SfactoryOptions {
+	/** "auto" shadows the decision model and promotes per site; "llm" never uses it. Default: SFACTORY_DECIDE or "auto". */
+	decide?: "auto" | "llm";
+	/** Decision model as provider/id. Default: SFACTORY_CLASSIFIER, else the first available one. */
+	classifier?: string;
+	/** Chat model for decide()/ask() as provider/id. Default: SFACTORY_ASK_MODEL, else the session's model. */
+	askModel?: string;
+	minSamples?: number;
+	/**
+	 * false freezes Workflow Memory: saved workflows still run, but nothing is recorded, saved,
+	 * calibrated or promoted. For evaluating a fixed state of learning. Default: true.
+	 */
+	learn?: boolean;
+}
+
+/** Channel on `pi.events` where sfactory reports its model calls, decisions, saves and runs. */
+export const TELEMETRY = "sfactory";
+
 export default function sfactory(pi: ExtensionAPI) {
+	return createSfactory()(pi);
+}
+
+export const createSfactory = (options: SfactoryOptions = {}) => (pi: ExtensionAPI) => {
+	const learn = options.learn !== false;
+	const tell = (event: Record<string, unknown>) => pi.events.emit(TELEMETRY, event);
 	const stores = new Map<string, { workflows: WorkflowStore; traces: TraceStore }>();
 	const storesFor = (cwd: string) => {
 		let entry = stores.get(cwd);
@@ -90,8 +114,8 @@ export default function sfactory(pi: ExtensionAPI) {
 
 	const cascadeConfig = (): CascadeConfig => ({
 		...DEFAULT_CASCADE,
-		mode: process.env.SFACTORY_DECIDE === "llm" ? "llm" : "auto",
-		minSamples: Number(process.env.SFACTORY_MIN_SAMPLES) || DEFAULT_CASCADE.minSamples,
+		mode: (options.decide ?? process.env.SFACTORY_DECIDE) === "llm" ? "llm" : "auto",
+		minSamples: options.minSamples ?? (Number(process.env.SFACTORY_MIN_SAMPLES) || DEFAULT_CASCADE.minSamples),
 	});
 
 	const isReadOnly = (name: string) =>
@@ -122,7 +146,7 @@ export default function sfactory(pi: ExtensionAPI) {
 			tokens: { input: 0, output: 0, cost: 0 },
 			calls: [],
 		};
-		if (!prompt) return;
+		if (!prompt || !learn) return;
 
 		// A nudge, not a router: tell the model when this request resembles a recorded cold run that
 		// no workflow covers yet. It decides whether compiling is worth it.
@@ -134,6 +158,7 @@ export default function sfactory(pi: ExtensionAPI) {
 			.sort((a, b) => b.score - a.score)[0];
 		if (!match || match.score < SIMILAR) return;
 		hinted.add(match.trace.id);
+		tell({ type: "hint", trace: match.trace.id, score: match.score });
 		return {
 			message: {
 				customType: "sfactory-hint",
@@ -177,7 +202,7 @@ export default function sfactory(pi: ExtensionAPI) {
 	pi.on("agent_settled", async (_event, ctx) => {
 		const trace = current;
 		current = undefined;
-		if (trace && trace.calls.length >= 2) storesFor(ctx.cwd).traces.write(trace);
+		if (learn && trace && trace.calls.length >= 2) storesFor(ctx.cwd).traces.write(trace);
 	});
 
 	// ---------------------------------------------------------------------------------------------
@@ -216,23 +241,32 @@ export default function sfactory(pi: ExtensionAPI) {
 		usage: Usage | undefined;
 	}
 
-	function liveJudgments(ctx: ExtensionContext, sites: Record<string, SiteState>, config: CascadeConfig, meter: Meter): Pick<Host, "decide" | "ask"> {
+	function liveJudgments(
+		ctx: ExtensionContext,
+		sites: Record<string, SiteState>,
+		config: CascadeConfig,
+		meter: Meter,
+		/** Where the calls come from, for telemetry. */
+		origin: { workflow: string; phase: "run" | "replay" },
+	): Pick<Host, "decide" | "ask"> {
 		const registry = ctx.modelRegistry;
 		const pick = (spec: string | undefined) => {
 			const slash = spec?.indexOf("/") ?? -1;
 			return spec && slash > 0 ? ([spec.slice(0, slash), spec.slice(slash + 1)] as const) : undefined;
 		};
 
-		const chat = async (system: string, prompt: string, signal: AbortSignal): Promise<string> => {
-			const spec = pick(process.env.SFACTORY_ASK_MODEL);
+		const chat = async (role: "decide_llm" | "ask_llm", site: string | undefined, system: string, prompt: string, signal: AbortSignal): Promise<string> => {
+			const spec = pick(options.askModel ?? process.env.SFACTORY_ASK_MODEL);
 			const model = (spec && registry.find(spec[0], spec[1])) || ctx.model;
 			if (!model) throw new Error("decide()/ask() need a chat model: select one, or set SFACTORY_ASK_MODEL=provider/id");
+			const t0 = Date.now();
 			const message = await registry.complete(
 				model,
 				{ systemPrompt: system, messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
 				{ signal } as never,
 			);
 			meter.usage = addUsage(meter.usage, message.usage);
+			tell({ type: "model_call", role, site, ...origin, model: `${model.provider}/${model.id}`, usage: message.usage, ms: Date.now() - t0, ok: message.stopReason !== "error" });
 			if (message.stopReason === "error" || message.stopReason === "aborted") {
 				throw new Error(`model call failed: ${message.errorMessage ?? message.stopReason}`);
 			}
@@ -242,7 +276,7 @@ export default function sfactory(pi: ExtensionAPI) {
 		let classifier: Promise<unknown> | undefined;
 		const findClassifier = () => {
 			classifier ??= (async () => {
-				const spec = pick(process.env.SFACTORY_CLASSIFIER);
+				const spec = pick(options.classifier ?? process.env.SFACTORY_CLASSIFIER);
 				if (spec) return registry.findOfType("classifier", spec[0], spec[1]);
 				return (await registry.getAvailableOfType("classifier"))[0];
 			})().catch(() => undefined);
@@ -252,12 +286,15 @@ export default function sfactory(pi: ExtensionAPI) {
 		const classify = async (q: DecideQuestion, signal: AbortSignal) => {
 			const model = await findClassifier();
 			if (!model) return undefined;
+			const t0 = Date.now();
 			const result = await registry.classify(
 				model as never,
 				{ state: q.state as never, questions: { q: { type: q.type, instructions: q.instructions, criteria: q.criteria } as never } },
 				{ signal } as never,
 			);
 			meter.usage = addUsage(meter.usage, result.usage);
+			const used = model as { provider: string; id: string };
+			tell({ type: "model_call", role: "classifier", site: q.id, ...origin, model: `${used.provider}/${used.id}`, usage: result.usage, ms: Date.now() - t0, ok: result.stopReason === "stop" });
 			const answer = result.stopReason === "stop" ? result.answers.q : undefined;
 			if (!answer) return undefined;
 			if (answer.type === "choice") return { answer: answer.choice as DecideValue, confidence: answer.confidence };
@@ -273,11 +310,13 @@ export default function sfactory(pi: ExtensionAPI) {
 						config,
 						sites,
 						classify: config.mode === "auto" ? classify : undefined,
-						llm: async (q, s) => parseDecide(q, await chat(DECIDE_SYSTEM, buildDecidePrompt(q), s)),
+						llm: async (q, s) => parseDecide(q, await chat("decide_llm", q.id, DECIDE_SYSTEM, buildDecidePrompt(q), s)),
+						onEvent: (event) => tell({ type: "decision", ...origin, ...event }),
 					},
 					signal,
 				),
-			ask: async (prompt, state, schema, signal) => parseAsk(await chat(ASK_SYSTEM, buildAskPrompt(prompt, state, schema), signal), schema),
+			ask: async (prompt, state, schema, signal) =>
+				parseAsk(await chat("ask_llm", undefined, ASK_SYSTEM, buildAskPrompt(prompt, state, schema), signal), schema),
 		};
 	}
 
@@ -349,22 +388,26 @@ export default function sfactory(pi: ExtensionAPI) {
 				const loaded = workflows.load(name);
 				if (!loaded || loaded.meta.status === "retired") throw new Error(`workflow ${name} is no longer available; solve the task with your ordinary tools`);
 				if (!loaded.intact) {
+					tell({ type: "run", workflow: name, status: "refused", reason: "modified" });
 					throw new Error(`workflow ${name} was modified outside workflow_save and will not run. Solve the task with your ordinary tools, then re-save it.`);
 				}
 				const { decls, missing, hash } = toolDecls(ctx, loaded.meta.tools);
 				if (missing.length || hash !== loaded.meta.toolsHash) {
-					workflows.updateMeta(name, (m) => {
-						m.status = "candidate";
-						m.stats.consecutiveOk = 0;
-						m.stats.lastError = "stale";
-					});
+					if (learn) {
+						workflows.updateMeta(name, (m) => {
+							m.status = "candidate";
+							m.stats.consecutiveOk = 0;
+							m.stats.lastError = "stale";
+						});
+					}
+					tell({ type: "run", workflow: name, status: "refused", reason: "stale" });
 					const why = missing.length ? `tools are missing: ${missing.join(", ")}` : "the schema of a tool it uses has changed";
 					throw new Error(`workflow ${name} is stale (${why}) and will not run. Solve the task with your ordinary tools, then re-validate it with workflow_save.`);
 				}
 
 				const meter: Meter = { usage: undefined };
 				const sites = structuredClone(loaded.meta.sites);
-				const judgments = liveJudgments(ctx, sites, cascadeConfig(), meter);
+				const judgments = liveJudgments(ctx, sites, cascadeConfig(), meter, { workflow: name, phase: "run" });
 				const host: Host = {
 					...judgments,
 					async callTool(tool, args, toolSignal) {
@@ -384,6 +427,26 @@ export default function sfactory(pi: ExtensionAPI) {
 					activeRuns.delete(toolCallId);
 				}
 
+				tell({
+					type: "run",
+					workflow: name,
+					version: loaded.meta.version,
+					status: result.status,
+					reason: result.reason,
+					calls: result.calls.length,
+					effects: result.calls.filter((call) => call.ok && !call.readOnly).length,
+					decisions: result.decisions.length,
+					ms: result.ms,
+				});
+				// A frozen memory runs the workflow but learns nothing from the run.
+				if (!learn) {
+					return {
+						content: [{ type: "text", text: describeRun(loaded.meta, result) }],
+						details: { status: result.status, calls: result.calls.length, decisions: result.decisions.length, ms: result.ms },
+						isError: result.status === "failed",
+						usage: meter.usage as never,
+					};
+				}
 				const meta = workflows.updateMeta(name, (m) => {
 					m.sites = sites;
 					m.stats.runs++;
@@ -429,6 +492,9 @@ export default function sfactory(pi: ExtensionAPI) {
 	// ---------------------------------------------------------------------------------------------
 	// workflow_trace: the raw material.
 	// ---------------------------------------------------------------------------------------------
+
+	// A frozen memory offers no way to change it.
+	if (!learn) return;
 
 	pi.registerTool({
 		name: "workflow_trace",
@@ -488,7 +554,8 @@ export default function sfactory(pi: ExtensionAPI) {
 			"Save a reusable workflow compiled from recorded runs. The code is the body of an async JavaScript function that runs in the " +
 			"codemode sandbox with `input`, `tools.<name>(args)`, `decide()`, `ask()`, `escalate()`, `text()` and `return`. Before saving, " +
 			"the code is replayed against every example: each tool call must match a recorded call exactly (same tool, same arguments), and " +
-			"every recorded EFFECT call must be reproduced unless listed in `ignore`. On success the workflow becomes the tool wf_<name>. " +
+			"every recorded EFFECT call must be reproduced unless listed in `ignore`. A decide() answer that differs from what the recorded run " +
+			"did is tolerated and reported, as long as most answers agree. On success the workflow becomes the tool wf_<name>. " +
 			"Read the workflow-compile skill first.",
 		promptSnippet: "Save a validated, reusable workflow compiled from recorded runs",
 		promptGuidelines: [
@@ -546,12 +613,34 @@ export default function sfactory(pi: ExtensionAPI) {
 
 			// Validation asks the LLM for every judgment, so a pass does not depend on calibration state.
 			const meter: Meter = { usage: undefined };
-			const judgments = liveJudgments(ctx, {}, { ...cascadeConfig(), mode: "llm" }, meter);
+			const judgments = liveJudgments(ctx, {}, { ...cascadeConfig(), mode: "llm" }, meter, { workflow: params.name, phase: "replay" });
 			const reports = [];
 			for (const fixture of fixtures.values()) {
 				reports.push(await replayFixture(params.code, fixture, decls, judgments, { signal: signal ?? undefined }));
 			}
 			const failed = reports.filter((report) => !report.pass);
+			const divergences = reports.reduce((n, report) => n + report.divergences.length, 0);
+			workflows.writeAttempt({
+				at: new Date().toISOString(),
+				name: params.name,
+				description: params.description,
+				input_schema: params.input_schema,
+				code: params.code,
+				tools: decls,
+				fixtures: [...fixtures.values()],
+				outcome: failed.length ? "refused" : "saved",
+				reports: reports.map((report) => ({ fixture: report.fixture, pass: report.pass, summary: report.summary, divergences: report.divergences })),
+			});
+			tell({
+				type: "save",
+				workflow: params.name,
+				outcome: failed.length ? "refused" : "saved",
+				version: (previous?.meta.version ?? 0) + 1,
+				examples: params.examples.length,
+				fixtures: reports.length,
+				failed: failed.length,
+				divergences,
+			});
 			if (failed.length) {
 				return {
 					content: [
@@ -559,7 +648,7 @@ export default function sfactory(pi: ExtensionAPI) {
 							type: "text",
 							text:
 								`NOT SAVED: ${failed.length} of ${reports.length} example(s) failed replay.\n\n${reports.map((r) => r.summary).join("\n\n")}\n\n` +
-								"Fix the code so its tool calls match the recorded ones exactly (inspect them with workflow_trace), " +
+								"Fix the code and call workflow_save again: make its tool calls match the recorded ones exactly (inspect them with workflow_trace), " +
 								"list exploratory EFFECT calls in `ignore`, or drop an obsolete fixture with `drop_fixtures`.",
 						},
 					],
@@ -689,4 +778,4 @@ export default function sfactory(pi: ExtensionAPI) {
 			return say("usage: /wf [list | show <name> | trust <name> | retire <name> | delete <name>]", "warning");
 		},
 	});
-}
+};

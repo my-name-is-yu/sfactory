@@ -10,7 +10,8 @@
     "pi:wf": "SFACTORY_DECIDE=llm pi -e ./extensions/sfactory/index.ts -e ./demo/tickets.ts --skill ./skills --tools +codemode",
     "demo:reset": "node --experimental-strip-types --no-warnings demo/seed.ts",
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "exp": "node --experimental-strip-types --no-warnings experiments/run.ts"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^1.6.1",

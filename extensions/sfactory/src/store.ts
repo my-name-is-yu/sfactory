@@ -123,6 +123,20 @@ export class WorkflowStore {
 		return path;
 	}
 
+	/**
+	 * Keep what a workflow_save call submitted and how the gate judged it, admitted or not, so a
+	 * refusal can be studied and replayed later. Only the most recent attempts are kept.
+	 */
+	writeAttempt(attempt: Record<string, unknown>): string {
+		const dir = join(this.root, "_attempts");
+		mkdirSync(dir, { recursive: true });
+		const path = join(dir, `${stamp()}.json`);
+		writeJson(path, attempt);
+		const files = readdirSync(dir).sort();
+		for (const file of files.slice(0, Math.max(0, files.length - MAX_RUN_JOURNALS))) rmSync(join(dir, file));
+		return path;
+	}
+
 	remove(name: string): void {
 		rmSync(this.dir(name), { recursive: true, force: true });
 	}

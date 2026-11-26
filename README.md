@@ -6,12 +6,12 @@ SFactory は、Pi Coding Agent が解いたタスクの手順を JavaScript の 
 
 ![宣言的記憶では記録した解き方を読み直し、手続き記憶では保存した Workflow を実行する](assets/memory-models.svg)
 
-[これまでの実験結果](#これまでの実験結果) · [チケットのデモを試す](#チケットのデモを試す) · [Workflow の書き方](skills/workflow-compile/SKILL.md)
+[これまでの実験結果](#これまでの実験結果) · [実験を再現する](#実験を再現する) · [チケットのデモを試す](#チケットのデモを試す) · [Workflow の書き方](skills/workflow-compile/SKILL.md)
 
 ## 解いたタスクを Workflow にする
 
 1. **記録する。** Pi が通常のツールでタスクを解きます。SFactory はツールの呼び出しと結果を記録します。
-2. **検証して保存する。** Pi が `workflow_trace` で記録を読み、入力と手順を分けてコードを書きます。`workflow_save` は記録の応答を使ってコードを実行し、必要な更新操作を再現できた場合に保存します。リプレイ中は実際のツールを呼び出しません。
+2. **検証して保存する。** Pi が `workflow_trace` で記録を読み、入力と手順を分けてコードを書きます。`workflow_save` は記録の応答を使ってコードを実行し、必要な更新操作を再現できた場合に保存します。リプレイ中は実際のツールを呼び出しません。`decide()` の答えが記録と食い違っても、少数であれば保存し、食い違った判断を結果に列挙します。
 3. **次のタスクで実行する。** Pi が `wf_<name>` を選び、Workflow がツールの呼び出しや条件分岐を処理します。判断が必要な箇所は `decide()` でモデルに問い合わせます。扱えない入力では、実行済みの更新を伝えて残りを Pi に引き継ぎます。
 
 ![通常の Agent、Skills、Code Mode、SFactory の実行フロー](assets/execution-models.svg)
@@ -39,7 +39,7 @@ Skills は手順書を次のタスクに持ち越します。Code Mode は、そ
 - 使ったのは開発用データだけです。学習用が8件×3回分、較正用が9件×4回分です。未見評価用と例外・適応評価用のデータは、まだ走らせていません。
 - Workflow や回答は事前に用意していません。保存するかどうかはモデルが決めています。
 
-実験用のコードと、下で述べる保存条件の変更は、まだこのリポジトリに入っていません。
+集計表は [experiments/results/2026-11-26-dev/](experiments/results/2026-11-26-dev/) にあります。同じ実験は[実験を再現する](#実験を再現する)の手順で実行できます。
 
 **確認できたこと**
 
@@ -95,6 +95,73 @@ Workflow を保存する試行は、65〜92秒、$0.04〜0.05 かかりました
 - 別の作業に Workflow を誤って使わないか
 - 一覧が複数ページに分かれる場合や、更新が拒否される場合の挙動
 - 系列を増やしたときのばらつき
+
+## 実験を再現する
+
+上の結果を出した実験と、まだ実行していない本試行は、同じコマンドで走らせられます。必要なのは Node.js 22.19.0 以上と OpenAI の API キー1つです。大型モデルも Decision Model も OpenAI API で動きます。
+
+```sh
+npm ci
+export OPENAI_API_KEY=sk-...
+npm run exp -- doctor
+```
+
+`doctor` は、大型モデルと Decision Model をそれぞれ1回ずつ実際に呼び出して確認します。`openai` プロバイダに OAuth でログインしていると Decision Model が使えないので、その場合は `npx pi auth logout openai` を実行します。
+
+**まず小さく確かめる**
+
+```sh
+npm run exp -- run --arms A,E --limit 1 --out runs/smoke
+```
+
+2つの構成で4試行ずつ、計8試行だけ走らせます。3分ほど、$0.1 程度です。
+
+**開発用データで段階を追う**
+
+上の結果は次の3つで出したものです。合計30試行、$0.8 程度でした。
+
+```sh
+for r in 0 1 2; do npm run exp -- run --arms D --phases train --repeat $r --out runs/s1; done
+for r in 0 1; do npm run exp -- run --arms A,D --phases train,calib --repeat $r --out runs/s2; done
+npm run exp -- run --arms E --phases train,calib --out runs/s3
+```
+
+**本試行**
+
+5つの構成を、学習用、較正用、未見評価用、例外・適応評価用の全20回分で比べます。未見評価用と例外・適応評価用では学習を止め、その時点の Workflow と較正状態を固定して評価します。
+
+```sh
+for r in 0 1 2; do npm run exp -- run --repeat $r --out runs/final; done
+```
+
+3系列で300試行です。開発用の実行の単価から見積もると、$6〜8、2〜3時間かかります。中断しても、同じコマンドをもう一度実行すれば続きから再開します。
+
+| 構成 | 内容 |
+|---|---|
+| A | Pi のみ |
+| B | Pi と Code Mode |
+| C | Pi と Code Mode。スクリプトから Decision Model を呼べます |
+| D | Code Mode と Workflow。判断には LLM を使います |
+| E | Code Mode と Workflow。判断を Decision Model に移していきます |
+
+**結果を読む**
+
+```sh
+cat runs/final/report.md                                     # 集計表
+npm run exp -- inspect --out runs/final --arm E --trial 2    # 1試行の発話とツール呼び出し
+npm run exp -- replay --out runs/final --arm E               # 直近の保存を保存条件にかけ直す
+```
+
+`report.md` には、構成とフェーズごとの成功率、正しく処理した件数、時間、モデルの呼び出し回数とトークン数、費用、Workflow の保存・再利用・誤適用、Decision Model の採用・監査・不一致、不要または禁止された更新、判断点ごとの較正状態が出ます。試行ごとの記録は `runs/final/rep<n>/<構成>/trials/` に残ります。
+
+**本試行の前に知っておくこと**
+
+- 未見評価用と例外・適応評価用のデータは、一度見て調整すると未見ではなくなります。本試行はコードを固定してから1回だけ走らせてください。
+- Decision Model に任せる信頼度の下限は設けていません。「考えられること」に書いたとおり、未見データで誤った回答を採用する恐れがあり、それ自体が本試行で測る対象です。
+- 学習用の1件は正解ラベルが疑わしいままです。全構成に同じように効きます。
+- 全構成で、モデルが使えるのは課題用のツールと `read` だけです。正解データを隔離するために `bash` や `write` を外しています。
+
+データセット、Verifier、計測項目、もう1つの課題(CI の失敗調査)については [experiments/README.md](experiments/README.md) を参照してください。
 
 ## チケットのデモを試す
 

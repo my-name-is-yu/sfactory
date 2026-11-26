@@ -153,7 +153,7 @@ test("experience becomes a workflow, and the workflow knows its limits", { timeo
 		const saved = results.at(-1)!;
 		assert.equal(saved.isError, false, saved.text);
 		assert.match(saved.text, /Saved triage_tickets v1 as tool wf_triage_tickets \[candidate\]/);
-		assert.equal(judgments - judgedBeforeSave, 24, "replay asked the model for each judgment of both examples");
+		assert.equal(judgments - judgedBeforeSave, 16, "replay asked the model once for each distinct judgment of both examples");
 		assert.ok(world.read().every((t) => t.id.startsWith("T-2")), "replay did not touch the world");
 		assert.ok(session.getActiveToolNames().includes("wf_triage_tickets"));
 

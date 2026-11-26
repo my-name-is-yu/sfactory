@@ -1,0 +1,483 @@
+{
+ "cells": [
+  {
+   "arm": "A",
+   "phase": "train",
+   "trials": 6,
+   "successRate": 0.3333333333333333,
+   "itemAccuracy": 0.8333333333333334,
+   "incomplete": 0,
+   "meanWallS": 17.802333333333337,
+   "meanLargeCalls": 5,
+   "meanLargeTokens": 13959.666666666666,
+   "cachedShare": 0.6058645144344421,
+   "meanAgentTokens": 13959.666666666666,
+   "meanCompileTokens": 0,
+   "meanJudgmentTokens": 0,
+   "meanReplayTokens": 0,
+   "meanDecisionModelCalls": 0,
+   "decisionModel": {
+    "adopted": 0,
+    "shadow": 0,
+    "audits": 0,
+    "fallbacks": 0,
+    "disagreements": 0,
+    "llmOnly": 0,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 0,
+    "saved": 0,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 0,
+    "reused": 0,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 0
+   },
+   "sideEffects": {
+    "writes": 48,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.0565798,
+   "jailBlocks": 0
+  },
+  {
+   "arm": "A",
+   "phase": "calib",
+   "trials": 8,
+   "successRate": 0.375,
+   "itemAccuracy": 0.9305555555555556,
+   "incomplete": 0,
+   "meanWallS": 16.957124999999998,
+   "meanLargeCalls": 5.125,
+   "meanLargeTokens": 15286.375,
+   "cachedShare": 0.6168974004628305,
+   "meanAgentTokens": 15286.375,
+   "meanCompileTokens": 0,
+   "meanJudgmentTokens": 0,
+   "meanReplayTokens": 0,
+   "meanDecisionModelCalls": 0,
+   "decisionModel": {
+    "adopted": 0,
+    "shadow": 0,
+    "audits": 0,
+    "fallbacks": 0,
+    "disagreements": 0,
+    "llmOnly": 0,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 0,
+    "saved": 0,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 0,
+    "reused": 0,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 0
+   },
+   "sideEffects": {
+    "writes": 73,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.08157329999999999,
+   "jailBlocks": 0
+  },
+  {
+   "arm": "D",
+   "phase": "train",
+   "trials": 6,
+   "successRate": 0.5,
+   "itemAccuracy": 0.9166666666666666,
+   "incomplete": 0,
+   "meanWallS": 39.60833333333333,
+   "meanLargeCalls": 19.5,
+   "meanLargeTokens": 53744.833333333336,
+   "cachedShare": 0.6420741218535735,
+   "meanAgentTokens": 44201.5,
+   "meanCompileTokens": 16578.833333333332,
+   "meanJudgmentTokens": 1912.6666666666667,
+   "meanReplayTokens": 7630.666666666667,
+   "meanDecisionModelCalls": 0,
+   "decisionModel": {
+    "adopted": 0,
+    "shadow": 0,
+    "audits": 0,
+    "fallbacks": 0,
+    "disagreements": 0,
+    "llmOnly": 15,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 2,
+    "saved": 2,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 1,
+    "reused": 1,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 4
+   },
+   "sideEffects": {
+    "writes": 49,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.15928045000000002,
+   "jailBlocks": 0
+  },
+  {
+   "arm": "D",
+   "phase": "calib",
+   "trials": 8,
+   "successRate": 0.5,
+   "itemAccuracy": 0.9444444444444444,
+   "incomplete": 0,
+   "meanWallS": 30.974749999999997,
+   "meanLargeCalls": 19.5,
+   "meanLargeTokens": 18981.25,
+   "cachedShare": 0.1395060915377017,
+   "meanAgentTokens": 5865.75,
+   "meanCompileTokens": 0,
+   "meanJudgmentTokens": 13115.5,
+   "meanReplayTokens": 0,
+   "meanDecisionModelCalls": 0,
+   "decisionModel": {
+    "adopted": 0,
+    "shadow": 0,
+    "audits": 0,
+    "fallbacks": 0,
+    "disagreements": 0,
+    "llmOnly": 140,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 0,
+    "saved": 0,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 0,
+    "reused": 8,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 8
+   },
+   "sideEffects": {
+    "writes": 72,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.14648969999999997,
+   "jailBlocks": 0
+  }
+ ],
+ "cumulative": [
+  {
+   "arm": "A",
+   "repeat": 0,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 13848,
+     "costUsd": 0.00935925,
+     "wallS": 16.616,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 27949,
+     "costUsd": 0.019121399999999997,
+     "wallS": 37.221000000000004,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 41939,
+     "costUsd": 0.0284455,
+     "wallS": 50.17100000000001,
+     "successes": 1
+    },
+    {
+     "seq": 4,
+     "phase": "calib",
+     "episode": "tickets/calib-1",
+     "largeTokens": 61234,
+     "costUsd": 0.03933885,
+     "wallS": 68.822,
+     "successes": 2
+    },
+    {
+     "seq": 5,
+     "phase": "calib",
+     "episode": "tickets/calib-2",
+     "largeTokens": 75906,
+     "costUsd": 0.04919345,
+     "wallS": 86.357,
+     "successes": 2
+    },
+    {
+     "seq": 6,
+     "phase": "calib",
+     "episode": "tickets/calib-3",
+     "largeTokens": 90642,
+     "costUsd": 0.0595228,
+     "wallS": 104.048,
+     "successes": 3
+    },
+    {
+     "seq": 7,
+     "phase": "calib",
+     "episode": "tickets/calib-4",
+     "largeTokens": 105279,
+     "costUsd": 0.0694551,
+     "wallS": 119.431,
+     "successes": 3
+    }
+   ]
+  },
+  {
+   "arm": "A",
+   "repeat": 1,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 13856,
+     "costUsd": 0.00937665,
+     "wallS": 18.855,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 27837,
+     "costUsd": 0.018805000000000002,
+     "wallS": 39.046,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 41819,
+     "costUsd": 0.0281343,
+     "wallS": 56.643,
+     "successes": 1
+    },
+    {
+     "seq": 4,
+     "phase": "calib",
+     "episode": "tickets/calib-1",
+     "largeTokens": 56656,
+     "costUsd": 0.038452150000000004,
+     "wallS": 74.15,
+     "successes": 2
+    },
+    {
+     "seq": 5,
+     "phase": "calib",
+     "episode": "tickets/calib-2",
+     "largeTokens": 71356,
+     "costUsd": 0.048446750000000004,
+     "wallS": 89.84700000000001,
+     "successes": 2
+    },
+    {
+     "seq": 6,
+     "phase": "calib",
+     "episode": "tickets/calib-3",
+     "largeTokens": 86140,
+     "costUsd": 0.058800700000000004,
+     "wallS": 105.421,
+     "successes": 2
+    },
+    {
+     "seq": 7,
+     "phase": "calib",
+     "episode": "tickets/calib-4",
+     "largeTokens": 100770,
+     "costUsd": 0.06869800000000001,
+     "wallS": 123.04,
+     "successes": 2
+    }
+   ]
+  },
+  {
+   "arm": "D",
+   "repeat": 0,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 28145,
+     "costUsd": 0.011351500000000002,
+     "wallS": 17.673,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 135573,
+     "costUsd": 0.063003,
+     "wallS": 98.59,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 152915,
+     "costUsd": 0.07952275,
+     "wallS": 127.721,
+     "successes": 2
+    },
+    {
+     "seq": 4,
+     "phase": "calib",
+     "episode": "tickets/calib-1",
+     "largeTokens": 172495,
+     "costUsd": 0.0986485,
+     "wallS": 161.115,
+     "successes": 3
+    },
+    {
+     "seq": 5,
+     "phase": "calib",
+     "episode": "tickets/calib-2",
+     "largeTokens": 191939,
+     "costUsd": 0.11718465,
+     "wallS": 190.97,
+     "successes": 3
+    },
+    {
+     "seq": 6,
+     "phase": "calib",
+     "episode": "tickets/calib-3",
+     "largeTokens": 210789,
+     "costUsd": 0.13560585,
+     "wallS": 220.552,
+     "successes": 3
+    },
+    {
+     "seq": 7,
+     "phase": "calib",
+     "episode": "tickets/calib-4",
+     "largeTokens": 229613,
+     "costUsd": 0.15387565,
+     "wallS": 250.268,
+     "successes": 4
+    }
+   ]
+  },
+  {
+   "arm": "D",
+   "repeat": 1,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 23684,
+     "costUsd": 0.0110221,
+     "wallS": 15.295,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 85464,
+     "costUsd": 0.03192015,
+     "wallS": 43.352,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 169554,
+     "costUsd": 0.07975769999999999,
+     "wallS": 109.929,
+     "successes": 1
+    },
+    {
+     "seq": 4,
+     "phase": "calib",
+     "episode": "tickets/calib-1",
+     "largeTokens": 188763,
+     "costUsd": 0.09846979999999998,
+     "wallS": 142.753,
+     "successes": 2
+    },
+    {
+     "seq": 5,
+     "phase": "calib",
+     "episode": "tickets/calib-2",
+     "largeTokens": 207927,
+     "costUsd": 0.11678104999999998,
+     "wallS": 177.028,
+     "successes": 2
+    },
+    {
+     "seq": 6,
+     "phase": "calib",
+     "episode": "tickets/calib-3",
+     "largeTokens": 226329,
+     "costUsd": 0.13438659999999997,
+     "wallS": 207.771,
+     "successes": 2
+    },
+    {
+     "seq": 7,
+     "phase": "calib",
+     "episode": "tickets/calib-4",
+     "largeTokens": 244706,
+     "costUsd": 0.15189449999999996,
+     "wallS": 235.17999999999998,
+     "successes": 3
+    }
+   ]
+  }
+ ],
+ "sites": []
+}

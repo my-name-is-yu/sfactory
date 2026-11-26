@@ -294,3 +294,91 @@ test("similarity recognizes a repeated request, in Japanese too", () => {
 	assert.ok(similarity("triage the open tickets in batch 2", "triage the open tickets in batch 3") > 0.7);
 	assert.ok(similarity("triage the open tickets", "write a haiku about autumn") < 0.2);
 });
+
+// --- judgments that differ from the demonstration ---
+
+const FIVE = ["refund a", "refund b", "refund c", "love d", "love e"].map((text, i) => ({ id: `i${i}`, text }));
+
+async function recordFive() {
+	const host = fakeHost({
+		async callTool(name, args) {
+			return name === "items_list" ? FIVE : { ok: true, args };
+		},
+	});
+	const result = await runWorkflow({ code: TRIAGE, input: {}, tools: TOOLS, host });
+	return fixtureFrom(result, {});
+}
+
+test("replay finds the demonstrated answer when one live judgment differs, and reports it", async () => {
+	const fixture = await recordFive();
+	let asked = 0;
+	const moody = fakeHost({
+		async decide(q) {
+			asked++;
+			const text = String(q.state.text);
+			return { answer: text === "refund b" ? "praise" : text.includes("refund") ? "billing" : "praise", by: "s2", confidence: 1 };
+		},
+	});
+	const report = await replayFixture(TRIAGE, fixture, TOOLS, moody);
+	assert.equal(report.pass, true, report.summary);
+	assert.deepEqual(report.divergences, [{ site: "kind", state: { text: "refund b" }, live: "praise", demonstrated: "billing" }]);
+	assert.match(report.summary, /1 judgment\(s\) differ/);
+	assert.equal(asked, 5, "each question is asked once, however often the run is repeated");
+});
+
+test("replay infers the answer when the live judgment finds no fitting option", async () => {
+	const fixture = await recordFive();
+	const unsure = fakeHost({
+		async decide(q) {
+			if (q.state.text === "love d") throw new EscalateError("none of the options fit");
+			return { answer: String(q.state.text).includes("refund") ? "billing" : "praise", by: "s2", confidence: 1 };
+		},
+	});
+	const report = await replayFixture(TRIAGE, fixture, TOOLS, unsure);
+	assert.equal(report.pass, true, report.summary);
+	assert.deepEqual(report.divergences.map((d) => [d.live, d.demonstrated]), [["none", "praise"]]);
+});
+
+test("replay still refuses questions that mostly miss the demonstration, and programs no answer can save", async () => {
+	const fixture = await recordFive();
+	const contrary = fakeHost({
+		async decide(q) {
+			return { answer: String(q.state.text).includes("refund") ? "praise" : "billing", by: "s2", confidence: 1 };
+		},
+	});
+	const off = await replayFixture(TRIAGE, fixture, TOOLS, contrary);
+	assert.equal(off.pass, false);
+	assert.match(off.summary, /5 of 5 judgments differ/);
+
+	const wrongField = await replayFixture(TRIAGE.replace("label: d.answer", "label: d.answer, extra: 1"), fixture, TOOLS, fakeHost());
+	assert.equal(wrongField.pass, false);
+	assert.match(wrongField.summary, /never observed/);
+});
+
+test("the save a real model was refused in the smoke run is now admitted, with the one differing judgment reported", async () => {
+	const { readFileSync } = await import("node:fs");
+	const smoke = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures", "smoke-refused.json"), "utf8")) as { code: string; fixtures: Fixture[] };
+	const tools: ToolDecl[] = [
+		{ name: "tickets_policy", readOnly: true },
+		{ name: "tickets_list", readOnly: true },
+		{ name: "tickets_get", readOnly: true },
+		{ name: "tickets_update", readOnly: false },
+	];
+	const reports = [];
+	for (const fixture of smoke.fixtures) {
+		// Stands in for the live model: it answers as the agent did by hand in the recording, except
+		// for the one ticket where the live model answered differently in the smoke run.
+		const live = fakeHost({
+			async decide(q) {
+				const ticket = fixture.calls.find((c) => c.tool === "tickets_get" && (c.value as { subject: string }).subject === q.state.subject)!.value as { id: string };
+				const update = fixture.calls.find((c) => c.tool === "tickets_update" && (c.args as { id: string }).id === ticket.id)!.args as { label: string; priority?: string };
+				if (q.id === "priority" && ticket.id === "TK-2688") return { answer: "low", by: "s2", confidence: 1 };
+				return { answer: q.id === "team" ? update.label : update.priority!, by: "s2", confidence: 1 };
+			},
+		});
+		reports.push(await replayFixture(smoke.code, fixture, tools, live));
+	}
+	assert.deepEqual(reports.map((r) => r.pass), [true, true], reports.map((r) => r.summary).join("\n"));
+	assert.equal(reports[0].divergences.length, 0);
+	assert.deepEqual(reports[1].divergences.map((d) => [d.site, d.live, d.demonstrated]), [["priority", "low", "normal"]]);
+});
