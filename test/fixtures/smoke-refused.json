@@ -1,0 +1,927 @@
+{
+ "note": "A workflow_save call made by openai/gpt-6.1-terra in runs/smoke (arm E, calib-1) that the gate refused. The second recording is cut where the save was attempted.",
+ "name": "triage_open_support",
+ "code": "const policy=await tools.tickets_policy({}); async function list(){let all=[],cursor; do {const r=await tools.tickets_list(cursor?{status:'open',cursor}:{status:'open'}); all.push(...r.tickets); cursor=r.next_cursor;} while(cursor); return all;} const initial=await list(); const done=[], failed=[]; for(const item of initial){let t; try{t=await tools.tickets_get({id:item.id});}catch(e){failed.push({id:item.id,error:String(e)});continue;} const state={guide:policy.guide,subject:t.subject,body:t.body}; const label=(await decide({id:'team',state,type:'choice',instructions:'Choose the team according to the guide, including tie-breaks and out-of-scope rules.',criteria:{billing:'Billing actions and wrong amounts',technical:'Product defects except wrong charged amounts',account:'Access and roles when not defective',product:'Feature requests, feedback and how-to questions',unassigned:'Out-of-scope per guide'}})).answer; let args={id:t.id,label}; if(label!=='unassigned'){const priority=(await decide({id:'priority',state,type:'choice',instructions:'Choose priority according to the guide based on impact and timing.',criteria:{urgent:'Cannot work right now, ongoing loss or exposure, or many affected',normal:'Real problem with workaround or no time pressure',low:'Requests, suggestions, questions and nothing wrong'}})).answer; args.priority=priority; args.status='triaged';} let r; try{r=await tools.tickets_update(args);}catch(e){if(/temporar/i.test(String(e))){try{r=await tools.tickets_update(args);}catch(e2){failed.push({id:t.id,error:String(e2)});continue;}}else{failed.push({id:t.id,error:String(e)});continue;}} if(r.label!==label || (label==='unassigned'?(r.status!==t.status||r.priority!==null):(r.priority!==args.priority||r.status!=='triaged'))) await escalate('Stored ticket does not match requested update',{args,r,done,failed}); done.push({id:t.id,label,priority:r.priority,status:r.status});} const remaining=await list(); const known=new Set(done.filter(x=>x.status==='open').map(x=>x.id).concat(failed.map(x=>x.id))); const unexpected=remaining.filter(x=>!known.has(x.id)); return {done,failed,remaining,unexpected};",
+ "fixtures": [
+  {
+   "id": "t-20261126T131422-0844",
+   "source": "trace",
+   "prompt": "Triage the open support tickets. Follow the desk's routing guide (tickets_policy): give each ticket its team label and priority, mark it triaged, and treat out-of-scope tickets the way the guide says. At the end, check that every open ticket was dealt with and tell me which ones you could not handle.",
+   "input": {},
+   "ignore": [],
+   "calls": [
+    {
+     "seq": 1,
+     "tool": "tickets_policy",
+     "args": {},
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "guide": "SUPPORT DESK ROUTING GUIDE (v1)\n\nLabel each ticket with the team that has to act on it. Decide by what the customer needs done, not by the words they happen to use.\n\nTeams\n- billing: the amount charged or invoiced, refunds, plan changes including the number of paid seats, payment methods, tax and invoice details.\n- technical: the product does not work as documented: errors, crashes, wrong results, data loss, slowness, sync and integration failures.\n- account: getting into the account and who may use it: login, password, two-factor, email change, roles, ownership, adding or removing people within the seats already paid for, closing the account.\n- product: feature requests, feedback, and how-to questions about things that already work.\n\nTie-breaks\n- If a defect is the cause, the ticket is technical even when money or access is the visible symptom (for example: charged because cancelling fails with an error, or locked out because the login page crashes).\n- A wrong amount on a charge or invoice is billing, whatever produced it.\n- If nothing is broken and the customer cannot get in or wants access changed, it is account.\n- A question about how to do something is product, whatever topic it touches.\n- The language a ticket is written in does not matter.\n\nPriority\n- urgent: the customer cannot do their work right now, is losing data or money right now, data is exposed to people who should not see it, or many people are affected.\n- normal: a real problem that has a workaround or no time pressure.\n- low: requests, suggestions, questions, thanks, and anything else where nothing is wrong.\nTone does not set priority. Capital letters and \"ASAP\" on a suggestion are still low; a calm report of ongoing data loss is urgent.\n\nHandling\n- When label and priority are set, set status to \"triaged\".\n- Out of scope: legal and privacy requests, sales, sponsorship and partnership offers, press, job applications, spam, and messages that are not about our product or cannot be understood. Label these \"unassigned\", set no priority and leave their status unchanged; a person will pick them up.\n- Only work on the tickets you were asked to work on. Do not draft replies unless asked to.\n- If the desk refuses an update because the ticket is locked, leave that ticket alone and report it. If the desk says it is temporarily unavailable, try again; it usually works the second time.\n- Labels and priorities are exactly the lowercase words above."
+     }
+    },
+    {
+     "seq": 2,
+     "tool": "tickets_list",
+     "args": {
+      "status": "open"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "tickets": [
+       {
+        "id": "TK-1565",
+        "subject": "Dark mode please",
+        "status": "open"
+       },
+       {
+        "id": "TK-4493",
+        "subject": "Nobody can sign in since the maintenance",
+        "status": "open"
+       },
+       {
+        "id": "TK-2435",
+        "subject": "Lost my authenticator phone",
+        "status": "open"
+       },
+       {
+        "id": "TK-6639",
+        "subject": "How do I download old invoices?",
+        "status": "open"
+       },
+       {
+        "id": "TK-6344",
+        "subject": "Export button does nothing",
+        "status": "open"
+       },
+       {
+        "id": "TK-1357",
+        "subject": "Add two seats to our plan",
+        "status": "open"
+       },
+       {
+        "id": "TK-9182",
+        "subject": "Collaboration opportunity",
+        "status": "open"
+       },
+       {
+        "id": "TK-4865",
+        "subject": "Charged twice for March",
+        "status": "open"
+       }
+      ]
+     }
+    },
+    {
+     "seq": 3,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-1565"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-1565",
+      "customer": "mika.sato@northwind.example",
+      "subject": "Dark mode please",
+      "body": "Would love a dark theme for late-night work. No rush, just a wish.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 4,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-4493"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-4493",
+      "customer": "j.ortiz@northwind.example",
+      "subject": "Nobody can sign in since the maintenance",
+      "body": "Since last night's maintenance every login attempt ends on a 500 error page. All 40 of us are stuck and month-end close is today.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 5,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-2435"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-2435",
+      "customer": "c.duarte@northwind.example",
+      "subject": "Lost my authenticator phone",
+      "body": "My phone with the authenticator app was stolen. I need two-factor reset so I can get back in; I present to a client in an hour.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 6,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-6639"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-6639",
+      "customer": "j.ortiz@northwind.example",
+      "subject": "How do I download old invoices?",
+      "body": "Where in the app can I get PDF invoices from last year? I looked under Settings and couldn't find them.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 7,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-6344"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-6344",
+      "customer": "c.duarte@northwind.example",
+      "subject": "Export button does nothing",
+      "body": "Clicking Export to PDF on any report does nothing in Chrome or Firefox. It worked last week.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 8,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-1357"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-1357",
+      "customer": "y.tanaka@mail.example",
+      "subject": "Add two seats to our plan",
+      "body": "We hired two analysts. Please move us from 25 to 27 seats starting next billing cycle and confirm the new price.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 9,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-9182"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-9182",
+      "customer": "y.tanaka@fabrikam.example",
+      "subject": "Collaboration opportunity",
+      "body": "We run a newsletter with 80k readers in your niche and would like to discuss a paid sponsorship with your marketing team.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 10,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-4865"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-4865",
+      "customer": "mika.sato@mail.example",
+      "subject": "Charged twice for March",
+      "body": "Two identical charges of $49 appeared on the 3rd for the same workspace. Please refund the duplicate.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 11,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-1565",
+      "label": "product",
+      "priority": "low",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-1565",
+      "customer": "mika.sato@northwind.example",
+      "subject": "Dark mode please",
+      "body": "Would love a dark theme for late-night work. No rush, just a wish.",
+      "status": "triaged",
+      "label": "product",
+      "priority": "low",
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 12,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-4493",
+      "label": "technical",
+      "priority": "urgent",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-4493",
+      "customer": "j.ortiz@northwind.example",
+      "subject": "Nobody can sign in since the maintenance",
+      "body": "Since last night's maintenance every login attempt ends on a 500 error page. All 40 of us are stuck and month-end close is today.",
+      "status": "triaged",
+      "label": "technical",
+      "priority": "urgent",
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 13,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-2435",
+      "label": "account",
+      "priority": "urgent",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-2435",
+      "customer": "c.duarte@northwind.example",
+      "subject": "Lost my authenticator phone",
+      "body": "My phone with the authenticator app was stolen. I need two-factor reset so I can get back in; I present to a client in an hour.",
+      "status": "triaged",
+      "label": "account",
+      "priority": "urgent",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 14,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-6639",
+      "label": "product",
+      "priority": "low",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-6639",
+      "customer": "j.ortiz@northwind.example",
+      "subject": "How do I download old invoices?",
+      "body": "Where in the app can I get PDF invoices from last year? I looked under Settings and couldn't find them.",
+      "status": "triaged",
+      "label": "product",
+      "priority": "low",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 15,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-6344",
+      "label": "technical",
+      "priority": "normal",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-6344",
+      "customer": "c.duarte@northwind.example",
+      "subject": "Export button does nothing",
+      "body": "Clicking Export to PDF on any report does nothing in Chrome or Firefox. It worked last week.",
+      "status": "triaged",
+      "label": "technical",
+      "priority": "normal",
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 16,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-1357",
+      "label": "billing",
+      "priority": "low",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-1357",
+      "customer": "y.tanaka@mail.example",
+      "subject": "Add two seats to our plan",
+      "body": "We hired two analysts. Please move us from 25 to 27 seats starting next billing cycle and confirm the new price.",
+      "status": "triaged",
+      "label": "billing",
+      "priority": "low",
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 17,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-4865",
+      "label": "billing",
+      "priority": "normal",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-4865",
+      "customer": "mika.sato@mail.example",
+      "subject": "Charged twice for March",
+      "body": "Two identical charges of $49 appeared on the 3rd for the same workspace. Please refund the duplicate.",
+      "status": "triaged",
+      "label": "billing",
+      "priority": "normal",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 18,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-9182",
+      "label": "unassigned"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-9182",
+      "customer": "y.tanaka@fabrikam.example",
+      "subject": "Collaboration opportunity",
+      "body": "We run a newsletter with 80k readers in your niche and would like to discuss a paid sponsorship with your marketing team.",
+      "status": "open",
+      "label": "unassigned",
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 19,
+     "tool": "tickets_list",
+     "args": {
+      "status": "open"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "tickets": [
+       {
+        "id": "TK-9182",
+        "subject": "Collaboration opportunity",
+        "status": "open"
+       }
+      ]
+     }
+    }
+   ],
+   "decisions": []
+  },
+  {
+   "id": "t-20261126T131446-0452",
+   "source": "trace",
+   "prompt": "The open support queue needs triage. Label and prioritise every ticket by the routing guide (tickets_policy), mark each triaged, and follow the guide for anything out of scope. Confirm at the end that nothing open was left out, and list what you couldn't process.",
+   "input": {},
+   "ignore": [],
+   "calls": [
+    {
+     "seq": 1,
+     "tool": "tickets_policy",
+     "args": {},
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "guide": "SUPPORT DESK ROUTING GUIDE (v1)\n\nLabel each ticket with the team that has to act on it. Decide by what the customer needs done, not by the words they happen to use.\n\nTeams\n- billing: the amount charged or invoiced, refunds, plan changes including the number of paid seats, payment methods, tax and invoice details.\n- technical: the product does not work as documented: errors, crashes, wrong results, data loss, slowness, sync and integration failures.\n- account: getting into the account and who may use it: login, password, two-factor, email change, roles, ownership, adding or removing people within the seats already paid for, closing the account.\n- product: feature requests, feedback, and how-to questions about things that already work.\n\nTie-breaks\n- If a defect is the cause, the ticket is technical even when money or access is the visible symptom (for example: charged because cancelling fails with an error, or locked out because the login page crashes).\n- A wrong amount on a charge or invoice is billing, whatever produced it.\n- If nothing is broken and the customer cannot get in or wants access changed, it is account.\n- A question about how to do something is product, whatever topic it touches.\n- The language a ticket is written in does not matter.\n\nPriority\n- urgent: the customer cannot do their work right now, is losing data or money right now, data is exposed to people who should not see it, or many people are affected.\n- normal: a real problem that has a workaround or no time pressure.\n- low: requests, suggestions, questions, thanks, and anything else where nothing is wrong.\nTone does not set priority. Capital letters and \"ASAP\" on a suggestion are still low; a calm report of ongoing data loss is urgent.\n\nHandling\n- When label and priority are set, set status to \"triaged\".\n- Out of scope: legal and privacy requests, sales, sponsorship and partnership offers, press, job applications, spam, and messages that are not about our product or cannot be understood. Label these \"unassigned\", set no priority and leave their status unchanged; a person will pick them up.\n- Only work on the tickets you were asked to work on. Do not draft replies unless asked to.\n- If the desk refuses an update because the ticket is locked, leave that ticket alone and report it. If the desk says it is temporarily unavailable, try again; it usually works the second time.\n- Labels and priorities are exactly the lowercase words above."
+     }
+    },
+    {
+     "seq": 2,
+     "tool": "tickets_list",
+     "args": {
+      "status": "open"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "tickets": [
+       {
+        "id": "TK-2688",
+        "subject": "Receipt for expense report",
+        "status": "open"
+       },
+       {
+        "id": "TK-5555",
+        "subject": "Is there a student discount?",
+        "status": "open"
+       },
+       {
+        "id": "TK-8514",
+        "subject": "Can't remember which email I signed up with",
+        "status": "open"
+       },
+       {
+        "id": "TK-3330",
+        "subject": "Annual plan charged instead of monthly",
+        "status": "open"
+       },
+       {
+        "id": "TK-2182",
+        "subject": "Need an admin role for our IT lead",
+        "status": "open"
+       },
+       {
+        "id": "TK-4128",
+        "subject": "Shortcut for inserting dates",
+        "status": "open"
+       },
+       {
+        "id": "TK-2499",
+        "subject": "Billing page is blank",
+        "status": "open"
+       },
+       {
+        "id": "TK-5590",
+        "subject": "Webhook deliveries stopped",
+        "status": "open"
+       },
+       {
+        "id": "TK-8125",
+        "subject": "App crashes on launch after update",
+        "status": "open"
+       }
+      ]
+     }
+    },
+    {
+     "seq": 3,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-2688"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-2688",
+      "customer": "j.ortiz@mail.example",
+      "subject": "Receipt for expense report",
+      "body": "Could you send a receipt for last month's payment made out to 'Northwind Labs BV'? Finance needs it this quarter.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 4,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-5555"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-5555",
+      "customer": "aiko.mori@northwind.example",
+      "subject": "Is there a student discount?",
+      "body": "I'm a grad student. Do you offer reduced pricing and how would I apply for it?",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 5,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-8514"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-8514",
+      "customer": "n.okafor@fabrikam.example",
+      "subject": "Can't remember which email I signed up with",
+      "body": "I have three addresses and none is recognised at login. Can you help me find my account? Nothing urgent.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 6,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-3330"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-3330",
+      "customer": "mika.sato@brightline.example",
+      "subject": "Annual plan charged instead of monthly",
+      "body": "I picked monthly at checkout but was billed $468 for the year. Please switch it to monthly and refund the difference.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 7,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-2182"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-2182",
+      "customer": "mika.sato@brightline.example",
+      "subject": "Need an admin role for our IT lead",
+      "body": "Please grant Priya Raman the admin role. She manages our SSO setup and currently has only member rights.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 8,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-4128"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-4128",
+      "customer": "mika.sato@brightline.example",
+      "subject": "Shortcut for inserting dates",
+      "body": "A keyboard shortcut to insert today's date would save me a lot of typing.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 9,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-2499"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-2499",
+      "customer": "n.okafor@northwind.example",
+      "subject": "Billing page is blank",
+      "body": "The Billing page renders completely white with a console error 'TypeError: plan is undefined'. I wanted to update my card.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 10,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-5590"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-5590",
+      "customer": "priya.raman@mail.example",
+      "subject": "Webhook deliveries stopped",
+      "body": "Our endpoint has received no webhook events since yesterday 18:00, and your delivery log shows them as 'queued'. Order fulfilment depends on them and is piling up.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 11,
+     "tool": "tickets_get",
+     "args": {
+      "id": "TK-8125"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "id": "TK-8125",
+      "customer": "h.berg@kestrel.example",
+      "subject": "App crashes on launch after update",
+      "body": "Version 6.2 on Android 14 closes right after the splash screen. Reinstalling didn't help. I can't open any of my notes.",
+      "status": "open",
+      "label": null,
+      "priority": null,
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 12,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-2688",
+      "label": "billing",
+      "priority": "normal",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-2688",
+      "customer": "j.ortiz@mail.example",
+      "subject": "Receipt for expense report",
+      "body": "Could you send a receipt for last month's payment made out to 'Northwind Labs BV'? Finance needs it this quarter.",
+      "status": "triaged",
+      "label": "billing",
+      "priority": "normal",
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 13,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-5555",
+      "label": "product",
+      "priority": "low",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-5555",
+      "customer": "aiko.mori@northwind.example",
+      "subject": "Is there a student discount?",
+      "body": "I'm a grad student. Do you offer reduced pricing and how would I apply for it?",
+      "status": "triaged",
+      "label": "product",
+      "priority": "low",
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 14,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-8514",
+      "label": "account",
+      "priority": "normal",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-8514",
+      "customer": "n.okafor@fabrikam.example",
+      "subject": "Can't remember which email I signed up with",
+      "body": "I have three addresses and none is recognised at login. Can you help me find my account? Nothing urgent.",
+      "status": "triaged",
+      "label": "account",
+      "priority": "normal",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 15,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-3330",
+      "label": "billing",
+      "priority": "normal",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-3330",
+      "customer": "mika.sato@brightline.example",
+      "subject": "Annual plan charged instead of monthly",
+      "body": "I picked monthly at checkout but was billed $468 for the year. Please switch it to monthly and refund the difference.",
+      "status": "triaged",
+      "label": "billing",
+      "priority": "normal",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 16,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-2182",
+      "label": "account",
+      "priority": "low",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-2182",
+      "customer": "mika.sato@brightline.example",
+      "subject": "Need an admin role for our IT lead",
+      "body": "Please grant Priya Raman the admin role. She manages our SSO setup and currently has only member rights.",
+      "status": "triaged",
+      "label": "account",
+      "priority": "low",
+      "draft": null,
+      "tier": "enterprise"
+     }
+    },
+    {
+     "seq": 17,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-4128",
+      "label": "product",
+      "priority": "low",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-4128",
+      "customer": "mika.sato@brightline.example",
+      "subject": "Shortcut for inserting dates",
+      "body": "A keyboard shortcut to insert today's date would save me a lot of typing.",
+      "status": "triaged",
+      "label": "product",
+      "priority": "low",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 18,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-2499",
+      "label": "technical",
+      "priority": "normal",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-2499",
+      "customer": "n.okafor@northwind.example",
+      "subject": "Billing page is blank",
+      "body": "The Billing page renders completely white with a console error 'TypeError: plan is undefined'. I wanted to update my card.",
+      "status": "triaged",
+      "label": "technical",
+      "priority": "normal",
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 19,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-5590",
+      "label": "technical",
+      "priority": "urgent",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-5590",
+      "customer": "priya.raman@mail.example",
+      "subject": "Webhook deliveries stopped",
+      "body": "Our endpoint has received no webhook events since yesterday 18:00, and your delivery log shows them as 'queued'. Order fulfilment depends on them and is piling up.",
+      "status": "triaged",
+      "label": "technical",
+      "priority": "urgent",
+      "draft": null,
+      "tier": "pro"
+     }
+    },
+    {
+     "seq": 20,
+     "tool": "tickets_update",
+     "args": {
+      "id": "TK-8125",
+      "label": "technical",
+      "priority": "urgent",
+      "status": "triaged"
+     },
+     "ok": true,
+     "readOnly": false,
+     "value": {
+      "id": "TK-8125",
+      "customer": "h.berg@kestrel.example",
+      "subject": "App crashes on launch after update",
+      "body": "Version 6.2 on Android 14 closes right after the splash screen. Reinstalling didn't help. I can't open any of my notes.",
+      "status": "triaged",
+      "label": "technical",
+      "priority": "urgent",
+      "draft": null,
+      "tier": "free"
+     }
+    },
+    {
+     "seq": 21,
+     "tool": "tickets_list",
+     "args": {
+      "status": "open"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": {
+      "tickets": []
+     }
+    },
+    {
+     "seq": 22,
+     "tool": "read",
+     "args": {
+      "path": "skills/workflow-compile/SKILL.md"
+     },
+     "ok": true,
+     "readOnly": true,
+     "value": "---\nname: workflow-compile\ndescription: Compile a task you have solved more than once into a saved workflow (a wf_* tool) with workflow_trace and workflow_save. Use when a request repeats an earlier run, when sfactory hints that it resembles one, or when the user asks to make a task reusable. Do not use for one-off work.\n---\n\n# Compile a workflow\n\nA workflow is a JavaScript program that redoes a task you already solved, for new input, without you\nre-deriving the steps. It is admitted only if it reproduces recorded runs exactly, so write it from\nthe recordings, not from memory.\n\n## Steps\n\n1. Finish the current task first, with your ordinary tools.\n2. `workflow_trace()` lists recorded runs; the run in progress is listed first and is also\n   addressable as `\"current\"`. `workflow_trace({ id })` shows one run's calls;\n   `workflow_trace({ id, seq })` prints one result in full. Read every run you will use as an example.\n3. Compare the runs. What differs between them is the **input**. What is the same is the **program**.\n4. Write the code and call `workflow_save`. If replay fails, the reply says which call did not\n   match; fix the code and save again.\n\nPrefer two example runs with different inputs. One run cannot show which values are parameters.\n\n## The program\n\nThe code is the body of an async function in a sandbox. There is no file system, network or timer;\neverything goes through these:\n\n```js\ninput                                   // the validated workflow input (your input_schema)\nawait tools.<name>(args)                // only the tools the example runs used\nawait decide({ id, state, type, instructions, criteria })  // a bounded judgment\nawait ask(prompt, state, schema)        // a small typed generation\nawait escalate(reason, state)           // stop and hand back to the main model\ntext(value), console.log(...)           // output\nreturn value                            // the result, as JSON\n```\n\nA tool call resolves to the tool's structured result when it has one, otherwise to its text, and\nrejects with an `Error` when the tool fails. `workflow_trace` shows exactly what each call returned.\n\n### Use plain code for everything that is determined\n\nLoops, filters, sorting, lookups, formatting, arithmetic, branching on a field: write code.\n\n### Use `decide` only where the run needed reading comprehension\n\nA decision point is a place where you read unstructured content and picked one of a few options.\n\n```js\nconst d = await decide({\n  id: \"category\",                      // stable name for this decision site; never build it from data\n  state: { subject: t.subject, body: t.body },   // only what the judgment needs\n  type: \"choice\",                      // \"choice\" | \"bool\" | \"score\"\n  instructions: \"Which team should handle this support ticket?\",\n  criteria: { billing: \"Charges, refunds, invoices\", bug: \"Something is broken\", account: \"Login and settings\" },\n});\n// d.answer is the label (\"choice\"), true/false (\"bool\") or a level index (\"score\")\n```\n\n- `bool`: `criteria: { true: \"...\", false: \"...\" }`. `score`: `criteria: [\"lowest\", ..., \"highest\"]`.\n- Write the criteria so they reproduce the judgments in the recorded runs: replay compares the\n  resulting tool calls with the recorded ones.\n- If no option fits, the run escalates by itself. Do not add a catch-all option to avoid that.\n- A fast decision model takes a site over once it has agreed with the LLM often enough. Small state\n  and clear criteria make that happen sooner.\n\n### Use `ask` for short generated text\n\n```js\nconst reply = await ask(\"Draft a short, polite reply to this ticket.\", { subject, body }, {\n  type: \"object\", properties: { body: { type: \"string\" } }, required: [\"body\"],\n});\n```\n\nReplay cannot reproduce generated text, so a recorded call whose arguments contain it can never\nmatch. List such calls in `ignore`, and say so in your reply to the user.\n\n### Use `escalate` for anything the runs did not cover\n\nAn unexpected shape, an empty result where there should be data, a value outside the known set:\n`await escalate(\"why\", { what the main model needs to continue })`. Escalating is correct behavior.\nGuessing is not.\n\n### End with a check\n\nBefore `return`, compare what you changed with what you intended, and throw if it does not match. A\nworkflow that returns success on a wrong result is the worst failure there is.\n\nCheck with the values the effect calls returned. Add a read-back call only if the recorded runs\nmade that same read-back after their effects: replay answers a read with what was recorded, so a\nread the runs never made cannot match, and one they made only *before* the effects returns the old\nstate.\n\n## What replay enforces\n\n- Every tool call the program makes must equal a recorded call: same tool, same arguments. Order\n  does not matter, and calls may run in parallel with `Promise.all`.\n- Every recorded `EFFECT` call must be made, unless its `seq` is in that example's `ignore`. Ignore\n  only exploration (a stray `ls`) and calls with generated text.\n- Reads the recorded run made that the program does not need can simply be left out.\n- Values that came from the request belong in `input`. A literal copied from one run fails on the\n  other run.\n\n## The description\n\n`description` is all a future model sees when it decides whether to call the workflow. State what\nit does, when to use it, and when **not** to. A description that is too broad makes a past success\nget in the way of a new problem.\n"
+    }
+   ],
+   "decisions": []
+  }
+ ]
+}

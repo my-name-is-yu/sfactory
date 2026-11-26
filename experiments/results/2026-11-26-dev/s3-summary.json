@@ -1,0 +1,307 @@
+{
+ "cells": [
+  {
+   "arm": "E",
+   "phase": "train",
+   "trials": 3,
+   "successRate": 0.6666666666666666,
+   "itemAccuracy": 0.9166666666666666,
+   "incomplete": 0,
+   "meanWallS": 39.22133333333333,
+   "meanLargeCalls": 20.333333333333332,
+   "meanLargeTokens": 44583,
+   "cachedShare": 0.5586434291097504,
+   "meanAgentTokens": 33055.333333333336,
+   "meanCompileTokens": 8620,
+   "meanJudgmentTokens": 3774,
+   "meanReplayTokens": 7753.666666666667,
+   "meanDecisionModelCalls": 5,
+   "decisionModel": {
+    "adopted": 0,
+    "shadow": 15,
+    "audits": 0,
+    "fallbacks": 0,
+    "disagreements": 0,
+    "llmOnly": 0,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 1,
+    "saved": 1,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 0,
+    "reused": 1,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 2
+   },
+   "sideEffects": {
+    "writes": 24,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.07835015000000001,
+   "jailBlocks": 0
+  },
+  {
+   "arm": "E",
+   "phase": "calib",
+   "trials": 4,
+   "successRate": 1,
+   "itemAccuracy": 1,
+   "incomplete": 0,
+   "meanWallS": 18.878999999999998,
+   "meanLargeCalls": 9.5,
+   "meanLargeTokens": 11569.25,
+   "cachedShare": 0.23212394926205243,
+   "meanAgentTokens": 5952.5,
+   "meanCompileTokens": 0,
+   "meanJudgmentTokens": 5616.75,
+   "meanReplayTokens": 0,
+   "meanDecisionModelCalls": 17.5,
+   "decisionModel": {
+    "adopted": 43,
+    "shadow": 25,
+    "audits": 3,
+    "fallbacks": 2,
+    "disagreements": 1,
+    "llmOnly": 0,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 0,
+    "saved": 0,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 0,
+    "reused": 4,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 4
+   },
+   "sideEffects": {
+    "writes": 36,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.04825739999999999,
+   "jailBlocks": 0
+  }
+ ],
+ "cumulative": [
+  {
+   "arm": "E",
+   "repeat": 0,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 25328,
+     "costUsd": 0.011594949999999998,
+     "wallS": 14.217,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 116467,
+     "costUsd": 0.060703349999999996,
+     "wallS": 90.469,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 133749,
+     "costUsd": 0.07835015000000001,
+     "wallS": 117.66399999999999,
+     "successes": 2
+    },
+    {
+     "seq": 4,
+     "phase": "calib",
+     "episode": "tickets/calib-1",
+     "largeTokens": 153170,
+     "costUsd": 0.09866570000000001,
+     "wallS": 147.42499999999998,
+     "successes": 3
+    },
+    {
+     "seq": 5,
+     "phase": "calib",
+     "episode": "tickets/calib-2",
+     "largeTokens": 164287,
+     "costUsd": 0.11027420000000002,
+     "wallS": 167.39499999999998,
+     "successes": 4
+    },
+    {
+     "seq": 6,
+     "phase": "calib",
+     "episode": "tickets/calib-3",
+     "largeTokens": 172548,
+     "costUsd": 0.11896305000000001,
+     "wallS": 180.771,
+     "successes": 5
+    },
+    {
+     "seq": 7,
+     "phase": "calib",
+     "episode": "tickets/calib-4",
+     "largeTokens": 180026,
+     "costUsd": 0.12660755,
+     "wallS": 193.17999999999998,
+     "successes": 6
+    }
+   ]
+  }
+ ],
+ "sites": [
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 3,
+   "phase": "train",
+   "workflow": "triage_open_support",
+   "site": "team",
+   "tier": "s2",
+   "tau": 1,
+   "samples": 8,
+   "agreement": 1,
+   "served": 0
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 3,
+   "phase": "train",
+   "workflow": "triage_open_support",
+   "site": "priority",
+   "tier": "s2",
+   "tau": 1,
+   "samples": 7,
+   "agreement": 1,
+   "served": 0
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 4,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "team",
+   "tier": "s2",
+   "tau": 1,
+   "samples": 17,
+   "agreement": 1,
+   "served": 0
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 4,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "priority",
+   "tier": "s2",
+   "tau": 1,
+   "samples": 16,
+   "agreement": 1,
+   "served": 0
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 5,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "team",
+   "tier": "s1",
+   "tau": 0.49,
+   "samples": 20,
+   "agreement": 1,
+   "served": 6
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 5,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "priority",
+   "tier": "s1",
+   "tau": 0.33,
+   "samples": 20,
+   "agreement": 1,
+   "served": 5
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 6,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "team",
+   "tier": "s1",
+   "tau": 0.49,
+   "samples": 21,
+   "agreement": 1,
+   "served": 15
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 6,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "priority",
+   "tier": "s1",
+   "tau": 0.28,
+   "samples": 22,
+   "agreement": 1,
+   "served": 12
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 7,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "team",
+   "tier": "s1",
+   "tau": 0.49,
+   "samples": 22,
+   "agreement": 1,
+   "served": 24
+  },
+  {
+   "arm": "E",
+   "repeat": 0,
+   "seq": 7,
+   "phase": "calib",
+   "workflow": "triage_open_support",
+   "site": "priority",
+   "tier": "s1",
+   "tau": 0.14,
+   "samples": 23,
+   "agreement": 0.9565217391304348,
+   "served": 19
+  }
+ ]
+}

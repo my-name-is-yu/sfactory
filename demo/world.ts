@@ -7,11 +7,28 @@ export interface Ticket {
 	customer: string;
 	subject: string;
 	body: string;
-	status: "open" | "triaged" | "closed";
+	status: "open" | "pending" | "triaged" | "closed";
 	label: string | null;
 	priority: string | null;
 	draft: string | null;
+	/** Customer plan, when the desk tracks it. */
+	tier?: string;
 }
+
+/** What the tickets_* tools need from a support desk. Errors thrown here become tool errors. */
+export interface Desk {
+	list(query: { status?: string; cursor?: string }): { tickets: Pick<Ticket, "id" | "subject" | "status">[]; next_cursor?: string };
+	get(id: string): Ticket;
+	update(id: string, patch: { label?: string; priority?: string; status?: string }): Ticket;
+	draft(id: string, body: string): void;
+	/** The desk's routing guide: teams, priorities and rules. */
+	policy(): string;
+}
+
+const DEMO_POLICY = `Support desk routing guide
+Teams (label): billing (charges, refunds, invoices), bug (something is broken), account (login and settings), feature_request (suggestions).
+Priority: urgent when the customer is blocked or losing data, otherwise normal.
+Set status to "triaged" once label and priority are set. Requests that fit no team are left for a human.`;
 
 /** [subject, body]. The last two do not fit the usual categories. */
 const POOL: [string, string][] = [
@@ -55,7 +72,7 @@ export function seed(batch: number, size = DEFAULT_SIZE): Ticket[] {
 	});
 }
 
-export class World {
+export class World implements Desk {
 	readonly path: string;
 
 	constructor(cwd: string) {
@@ -70,6 +87,39 @@ export class World {
 	write(tickets: Ticket[]): void {
 		mkdirSync(dirname(this.path), { recursive: true });
 		writeFileSync(this.path, `${JSON.stringify(tickets, null, 1)}\n`);
+	}
+
+	list(query: { status?: string }) {
+		return { tickets: this.read().filter((t) => !query.status || t.status === query.status).map(({ id, subject, status }) => ({ id, subject, status })) };
+	}
+
+	get(id: string): Ticket {
+		const ticket = this.read().find((t) => t.id === id);
+		if (!ticket) throw new Error(`no ticket ${id}`);
+		return ticket;
+	}
+
+	update(id: string, patch: { label?: string; priority?: string; status?: string }): Ticket {
+		const all = this.read();
+		const ticket = all.find((t) => t.id === id);
+		if (!ticket) throw new Error(`no ticket ${id}`);
+		if (patch.label !== undefined) ticket.label = patch.label;
+		if (patch.priority !== undefined) ticket.priority = patch.priority;
+		if (patch.status !== undefined) ticket.status = patch.status as Ticket["status"];
+		this.write(all);
+		return ticket;
+	}
+
+	draft(id: string, body: string): void {
+		const all = this.read();
+		const ticket = all.find((t) => t.id === id);
+		if (!ticket) throw new Error(`no ticket ${id}`);
+		ticket.draft = body;
+		this.write(all);
+	}
+
+	policy(): string {
+		return DEMO_POLICY;
 	}
 
 	reset(batch: number, size = DEFAULT_SIZE): Ticket[] {

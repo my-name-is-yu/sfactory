@@ -60,7 +60,10 @@ const d = await decide({
 
 - `bool`: `criteria: { true: "...", false: "..." }`. `score`: `criteria: ["lowest", ..., "highest"]`.
 - Write the criteria so they reproduce the judgments in the recorded runs: replay compares the
-  resulting tool calls with the recorded ones.
+  resulting tool calls with the recorded ones. A few judgments may come out differently than in
+  the recorded run; the save still succeeds and lists them. For each one, work out which side was
+  right. If the recorded run was wrong, correct what it left behind. If `decide()` was wrong,
+  sharpen the criteria and save again. If more than a quarter differ, the save is refused.
 - If no option fits, the run escalates by itself. Do not add a catch-all option to avoid that.
 - A fast decision model takes a site over once it has agreed with the LLM often enough. Small state
   and clear criteria make that happen sooner.

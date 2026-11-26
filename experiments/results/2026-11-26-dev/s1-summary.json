@@ -1,0 +1,156 @@
+{
+ "cells": [
+  {
+   "arm": "D",
+   "phase": "train",
+   "trials": 9,
+   "successRate": 0.5555555555555556,
+   "itemAccuracy": 0.9305555555555556,
+   "incomplete": 0,
+   "meanWallS": 44.561,
+   "meanLargeCalls": 18.666666666666668,
+   "meanLargeTokens": 45668.444444444445,
+   "cachedShare": 0.6043803647546567,
+   "meanAgentTokens": 35853.88888888889,
+   "meanCompileTokens": 9738.222222222223,
+   "meanJudgmentTokens": 3228.6666666666665,
+   "meanReplayTokens": 6585.888888888889,
+   "meanDecisionModelCalls": 0,
+   "decisionModel": {
+    "adopted": 0,
+    "shadow": 0,
+    "audits": 0,
+    "fallbacks": 0,
+    "disagreements": 0,
+    "llmOnly": 38,
+    "viaCodemode": 0
+   },
+   "workflow": {
+    "saveCalls": 3,
+    "saved": 3,
+    "refused": 0,
+    "repairs": 0,
+    "divergences": 2,
+    "reused": 3,
+    "misapplied": 0,
+    "missedReuse": 0,
+    "escalations": 0,
+    "failures": 0,
+    "hints": 6
+   },
+   "sideEffects": {
+    "writes": 73,
+    "noop": 0,
+    "forbidden": 0,
+    "collateral": 0,
+    "refused": 0,
+    "retriesAfterRefusal": 0
+   },
+   "missedItems": 0,
+   "costUsd": 0.2193475,
+   "jailBlocks": 0
+  }
+ ],
+ "cumulative": [
+  {
+   "arm": "D",
+   "repeat": 0,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 29041,
+     "costUsd": 0.011417449999999999,
+     "wallS": 18.793,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 136542,
+     "costUsd": 0.06306795,
+     "wallS": 110.43,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 157513,
+     "costUsd": 0.08065295,
+     "wallS": 149.978,
+     "successes": 2
+    }
+   ]
+  },
+  {
+   "arm": "D",
+   "repeat": 1,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 24886,
+     "costUsd": 0.011348750000000001,
+     "wallS": 20.932,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 103505,
+     "costUsd": 0.049516950000000004,
+     "wallS": 85.821,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 119755,
+     "costUsd": 0.06224415,
+     "wallS": 114.106,
+     "successes": 1
+    }
+   ]
+  },
+  {
+   "arm": "D",
+   "repeat": 2,
+   "points": [
+    {
+     "seq": 1,
+     "phase": "train",
+     "episode": "tickets/train-1",
+     "largeTokens": 29796,
+     "costUsd": 0.01176285,
+     "wallS": 25.078,
+     "successes": 1
+    },
+    {
+     "seq": 2,
+     "phase": "train",
+     "episode": "tickets/train-2",
+     "largeTokens": 116568,
+     "costUsd": 0.05982175,
+     "wallS": 102.645,
+     "successes": 1
+    },
+    {
+     "seq": 3,
+     "phase": "train",
+     "episode": "tickets/train-3",
+     "largeTokens": 133748,
+     "costUsd": 0.0764504,
+     "wallS": 136.965,
+     "successes": 2
+    }
+   ]
+  }
+ ],
+ "sites": []
+}
